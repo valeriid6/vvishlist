@@ -97,6 +97,17 @@ function currencySymbol(code) {
   return map[code] || "";
 }
 
+function formatFirestoreDate(ts) {
+  if (!ts) return "—";
+  // Firestore Timestamp → JS Date
+  const d = ts.toDate();
+  return d.toLocaleDateString("uk-UA", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric"
+  });
+}
+
 function clearForm() {
   document.getElementById("name").value = "";
   document.getElementById("category").value = "техніка";
@@ -328,15 +339,16 @@ function render() {
         <a href="${item.url}" target="_blank" rel="noopener noreferrer">Перейти до товару</a><br>
 
         <div class="added-by">Додав(ла): ${escapeHtml(item.addedBy || "—")}</div>
+	<div class="added-by">Дата: ${formatFirestoreDate(item.createdAt)}</div>
 
         <div class="status-box">
-	    <label>Статус: </label>
+	<label>Статус: </label>
         <select class="status-select">
           <option ${item.status === "Хочу" ? "selected" : ""}>Хочу</option>
           <option ${item.status === "Куплено" ? "selected" : ""}>Куплено</option>
           <option ${item.status === "Передумав" ? "selected" : ""}>Передумав</option>
         </select>
-	    </div>
+	</div>
       </div>
     `;
 
@@ -442,4 +454,3 @@ async function editItem(item) {
 
 /* initial render */
 render();
-
