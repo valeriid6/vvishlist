@@ -1,5 +1,47 @@
 let list = JSON.parse(localStorage.getItem("wishlist") || "[]");
 
+/* ================= FIREBASE ================= */
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  getDocs,
+  onSnapshot,
+  deleteDoc,
+  doc,
+  updateDoc,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBhnd4JLwejiDqmlyqP0S4ipBRtDeXfVtw",
+  authDomain: "vvishlist-96fc7.firebaseapp.com",
+  projectId: "vvishlist-96fc7",
+  storageBucket: "vvishlist-96fc7.firebasestorage.app",
+  messagingSenderId: "591671325794",
+  appId: "1:591671325794:web:6ce3508d62f1b8b5fa0d3b",
+  measurementId: "G-BJ0HGSPGFB"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
+
+console.log("🔥 Firebase connected");
+
+
 // ---------- User ----------
 const usernameInput = document.getElementById("username");
 let currentUser = localStorage.getItem("wishlistUser") || "";
