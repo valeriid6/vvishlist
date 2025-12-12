@@ -1,19 +1,17 @@
-let list = JSON.parse(localStorage.getItem("wishlist") || "[]");
-
-/* ================= FIREBASE ================= */
-
+/* ================= FIREBASE (module) ================= */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
 
 import {
   getFirestore,
   collection,
   addDoc,
-  getDocs,
   onSnapshot,
   deleteDoc,
   doc,
   updateDoc,
-  serverTimestamp
+  serverTimestamp,
+  query,
+  orderBy
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
 import {
@@ -41,18 +39,11 @@ const provider = new GoogleAuthProvider();
 
 console.log("🔥 Firebase connected");
 
+/* ================= APP STATE ================= */
+let list = []; // тепер список з Firestore
+let currentUser = null;
 
-// ---------- User ----------
-const usernameInput = document.getElementById("username");
-let currentUser = localStorage.getItem("wishlistUser") || "";
-usernameInput.value = currentUser;
-
-usernameInput.addEventListener("input", () => {
-  currentUser = usernameInput.value.trim();
-  localStorage.setItem("wishlistUser", currentUser);
-});
-
-// ---------- Tabs ----------
+/* ================= UI: Tabs ================= */
 const tabButtons = document.querySelectorAll(".tab-btn");
 const addSection = document.getElementById("addSection");
 const listSection = document.getElementById("listSection");
@@ -75,7 +66,7 @@ tabButtons.forEach(btn => {
   });
 });
 
-// ---------- Toast ----------
+/* ================= Toast ================= */
 let toastTimer = null;
 function showToast(message) {
   const toast = document.getElementById("toast");
@@ -83,12 +74,10 @@ function showToast(message) {
   toast.classList.add("show");
 
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => {
-    toast.classList.remove("show");
-  }, 2200);
+  toastTimer = setTimeout(() => toast.classList.remove("show"), 2200);
 }
 
-// ---------- Helpers ----------
+/* ================= Helpers ================= */
 function isLikelyUrl(str) {
   return /^https?:\/\/.+/i.test(str);
 }
@@ -103,14 +92,9 @@ function getDefaultImage(cat) {
   return defaults[cat] || defaults["інше"];
 }
 
-// NEW: currency helpers
 function currencySymbol(code) {
   const map = { UAH: "₴", USD: "$", EUR: "€" };
   return map[code] || "";
-}
-
-function save() {
-  localStorage.setItem("wishlist", JSON.stringify(list));
 }
 
 function clearForm() {
@@ -118,18 +102,10 @@ function clearForm() {
   document.getElementById("category").value = "техніка";
   document.getElementById("imageUrl").value = "";
   document.getElementById("price").value = "";
-  document.getElementById("currency").value = "UAH"; // NEW
+  document.getElementById("currency").value = "UAH";
   document.getElementById("productUrl").value = "";
   document.getElementById("description").value = "";
 }
-
-// ---------- Filters ----------
-const searchInput = document.getElementById("searchInput");
-const filterCategory = document.getElementById("filterCategory");
-const filterStatus = document.getElementById("filterStatus");
-const minPrice = document.getElementById("minPrice");
-const maxPrice = document.getElementById("maxPrice");
-const resetFiltersBtn = document.getElementById("resetFiltersBtn");
 
 function toNumberOrNull(str) {
   const s = String(str || "").trim();
@@ -137,6 +113,86 @@ function toNumberOrNull(str) {
   const n = Number(s.replace(",", "."));
   return Number.isFinite(n) ? n : null;
 }
+
+function escapeHtml(str) {
+  return String(str)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+/* ================= Auth UI ================= */
+const authStatus = document.getElementById("authStatus");
+const loginBtn = document.getElementById("loginBtn");
+const logoutBtn = document.getElementById("logoutBtn");
+
+loginBtn.addEventListener("click", async () => {
+  try {
+    await signInWithPopup(auth, provider);
+  } catch (e) {
+    console.error(e);
+    showToast("Не вдалось увійти 😕");
+  }
+});
+
+logoutBtn.addEventListener("click", async () => {
+  try {
+    await signOut(auth);
+  } catch (e) {
+    console.error(e);
+    showToast("Не вдалось вийти 😕");
+  }
+});
+
+onAuthStateChanged(auth, (user) => {
+  currentUser = user || null;
+
+  if (currentUser) {
+    const name = currentUser.displayName || currentUser.email || "Користувач";
+    authStatus.textContent = name;
+    loginBtn.style.display = "none";
+    logoutBtn.style.display = "inline-block";
+  } else {
+    authStatus.textContent = "не увійшов";
+    loginBtn.style.display = "inline-block";
+    logoutBtn.style.display = "none";
+  }
+
+  // старт/рестарт підписки на базу (після логіну/логауту)
+  startLiveSync();
+});
+
+/* ================= Firestore live sync ================= */
+let unsub = null;
+
+function startLiveSync() {
+  if (unsub) {
+    unsub();
+    unsub = null;
+  }
+
+  // Публічний спільний список: всі бачать всі
+  const itemsRef = collection(db, "items");
+  const qRef = query(itemsRef, orderBy("createdAt", "desc"));
+
+  unsub = onSnapshot(qRef, (snap) => {
+    list = snap.docs.map(d => ({ ...d.data(), docId: d.id }));
+    render();
+  }, (err) => {
+    console.error(err);
+    showToast("Помилка з базою. Перевір правила Firestore.");
+  });
+}
+
+/* ================= Filters ================= */
+const searchInput = document.getElementById("searchInput");
+const filterCategory = document.getElementById("filterCategory");
+const filterStatus = document.getElementById("filterStatus");
+const minPrice = document.getElementById("minPrice");
+const maxPrice = document.getElementById("maxPrice");
+const resetFiltersBtn = document.getElementById("resetFiltersBtn");
 
 [searchInput, filterCategory, filterStatus, minPrice, maxPrice].forEach(el => {
   el.addEventListener("input", () => render());
@@ -152,18 +208,18 @@ resetFiltersBtn.addEventListener("click", () => {
   render();
 });
 
-// ---------- Add ----------
-document.getElementById("addBtn").onclick = () => {
+/* ================= Add item (Firestore) ================= */
+document.getElementById("addBtn").onclick = async () => {
   const name = document.getElementById("name").value.trim();
   const category = document.getElementById("category").value;
   const imageUrlRaw = document.getElementById("imageUrl").value.trim();
   const priceRaw = document.getElementById("price").value.trim();
-  const currency = document.getElementById("currency").value; // NEW
+  const currency = document.getElementById("currency").value;
   const url = document.getElementById("productUrl").value.trim();
   const description = document.getElementById("description").value.trim();
 
   if (!currentUser) {
-    showToast("Вкажи своє ім'я зверху (хто додає товар).");
+    showToast("Спочатку увійди через Google ✅");
     return;
   }
 
@@ -196,41 +252,45 @@ document.getElementById("addBtn").onclick = () => {
     category,
     imageUrl,
     price: String(priceNumber),
-    currency, // NEW
+    currency,
     url,
     description,
     status: "Хочу",
-    id: Date.now(),
-    addedBy: currentUser
+    addedBy: currentUser.displayName || currentUser.email || "Користувач",
+    userId: currentUser.uid,
+    createdAt: serverTimestamp()
   };
 
-  list.push(item);
-  save();
-  clearForm();
-  showToast("Товар додано ✅");
-
-  document.querySelector('.tab-btn[data-tab="list"]').click();
+  try {
+    await addDoc(collection(db, "items"), item);
+    clearForm();
+    showToast("Товар додано ✅");
+    document.querySelector('.tab-btn[data-tab="list"]').click();
+  } catch (e) {
+    console.error(e);
+    showToast("Не вдалось додати. Перевір Firestore Rules.");
+  }
 };
 
-// ---------- Render ----------
+/* ================= Render ================= */
 function render() {
   const container = document.getElementById("list");
   const itemsCount = document.getElementById("itemsCount");
 
   container.innerHTML = "";
 
-  const q = (searchInput?.value || "").trim().toLowerCase();
+  const qText = (searchInput?.value || "").trim().toLowerCase();
   const cat = filterCategory?.value || "";
   const st = filterStatus?.value || "";
   const minN = toNumberOrNull(minPrice?.value);
   const maxN = toNumberOrNull(maxPrice?.value);
 
   const filtered = list.filter(item => {
-    const nameOk = item.name.toLowerCase().includes(q);
+    const nameOk = String(item.name || "").toLowerCase().includes(qText);
     const catOk = !cat || item.category === cat;
     const stOk = !st || item.status === st;
 
-    const p = Number(String(item.price).replace(",", "."));
+    const p = Number(String(item.price || "").replace(",", "."));
     const priceOkMin = (minN === null) ? true : (p >= minN);
     const priceOkMax = (maxN === null) ? true : (p <= maxN);
 
@@ -250,7 +310,7 @@ function render() {
     div.className = "item";
 
     const sym = currencySymbol(item.currency || "UAH");
-    const priceText = `${escapeHtml(item.price)} ${sym || ""}`.trim();
+    const priceText = `${escapeHtml(item.price)} ${sym}`.trim();
 
     div.innerHTML = `
       <div class="menu-btn" title="Меню">⋮</div>
@@ -291,20 +351,20 @@ function render() {
       menu.style.display = isOpen ? "none" : "block";
     };
 
-    editBtn.onclick = (e) => {
+    deleteBtn.onclick = async (e) => {
       e.stopPropagation();
-      editItem(item.id);
+      await deleteItem(item.docId, item.userId);
       menu.style.display = "none";
     };
 
-    deleteBtn.onclick = (e) => {
+    editBtn.onclick = async (e) => {
       e.stopPropagation();
-      deleteItem(item.id);
+      await editItem(item);
       menu.style.display = "none";
     };
 
-    statusSelect.onchange = () => {
-      updateStatus(item.id, statusSelect.value);
+    statusSelect.onchange = async () => {
+      await updateStatus(item.docId, statusSelect.value);
       showToast("Статус змінено ✅");
     };
 
@@ -317,44 +377,66 @@ function closeAllMenus() {
   document.querySelectorAll(".menu").forEach(m => (m.style.display = "none"));
 }
 
-// ---------- Actions ----------
-function updateStatus(id, value) {
-  list = list.map(item => item.id === id ? { ...item, status: value } : item);
-  save();
+/* ================= Actions (Firestore) ================= */
+async function updateStatus(docId, value) {
+  try {
+    await updateDoc(doc(db, "items", docId), { status: value });
+  } catch (e) {
+    console.error(e);
+    showToast("Не вдалось змінити статус 😕");
+  }
 }
 
-function deleteItem(id) {
-  list = list.filter(item => item.id !== id);
-  save();
-  render();
-  showToast("Видалено 🗑️");
+async function deleteItem(docId, ownerUserId) {
+  if (!currentUser) {
+    showToast("Спочатку увійди ✅");
+    return;
+  }
+
+  // просте правило: видаляти може тільки той, хто додав
+  if (currentUser.uid !== ownerUserId) {
+    showToast("Ти не можеш видалити чужий товар 🙂");
+    return;
+  }
+
+  try {
+    await deleteDoc(doc(db, "items", docId));
+    showToast("Видалено 🗑️");
+  } catch (e) {
+    console.error(e);
+    showToast("Не вдалось видалити 😕");
+  }
 }
 
-function editItem(id) {
-  const item = list.find(i => i.id === id);
-  if (!item) return;
+async function editItem(item) {
+  if (!currentUser) {
+    showToast("Спочатку увійди ✅");
+    return;
+  }
+  if (currentUser.uid !== item.userId) {
+    showToast("Ти не можеш редагувати чужий товар 🙂");
+    return;
+  }
 
-  document.getElementById("name").value = item.name;
-  document.getElementById("category").value = item.category;
-  document.getElementById("imageUrl").value = item.imageUrl;
-  document.getElementById("price").value = item.price;
-  document.getElementById("currency").value = item.currency || "UAH"; // NEW
-  document.getElementById("productUrl").value = item.url;
+  // Заповнюємо форму
+  document.getElementById("name").value = item.name || "";
+  document.getElementById("category").value = item.category || "техніка";
+  document.getElementById("imageUrl").value = item.imageUrl || "";
+  document.getElementById("price").value = item.price || "";
+  document.getElementById("currency").value = item.currency || "UAH";
+  document.getElementById("productUrl").value = item.url || "";
   document.getElementById("description").value = item.description || "";
 
-  deleteItem(id);
-  document.querySelector('.tab-btn[data-tab="add"]').click();
-  showToast("Можеш відредагувати і натиснути “Додати” ✅");
+  // Видаляємо старий документ, щоб після “Додати” створити оновлений (простий шлях)
+  try {
+    await deleteDoc(doc(db, "items", item.docId));
+    document.querySelector('.tab-btn[data-tab="add"]').click();
+    showToast("Відредагуй і натисни “Додати” ✅");
+  } catch (e) {
+    console.error(e);
+    showToast("Не вдалось перейти в редагування 😕");
+  }
 }
 
-// Escape
-function escapeHtml(str) {
-  return String(str)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
+/* initial render */
 render();
