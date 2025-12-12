@@ -329,10 +329,6 @@ function render() {
         <button class="delete-btn">Видалити</button>
       </div>
 
-      <div class="date-box">
-       ${formatFirestoreDate(item.createdAt)}
-      </div>
-
       <img src="${item.imageUrl}" alt="">
       <div class="item-info">
         <h3>${escapeHtml(item.name)}</h3>
@@ -341,7 +337,9 @@ function render() {
         ${item.description ? `<p>${escapeHtml(item.description)}</p>` : ""}
         <a href="${item.url}" target="_blank" rel="noopener noreferrer">Перейти до товару</a><br>
 
-        <div class="added-by">Додав(ла): ${escapeHtml(item.addedBy || "—")} | ${formatFirestoreDate(item.createdAt)}</div>
+        <div class="added-by">Додав(ла): ${escapeHtml(item.addedBy || "—")} | </div><div class="date-box">
+       ${formatFirestoreDate(item.createdAt)}
+      </div>
 
         <div class="status-box">
 	<label>Статус: </label>
