@@ -215,6 +215,20 @@ h1 {
   border: 1px solid rgba(43, 51, 87, 0.55);
 }
 
+.status-box {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-box label {
+  font-size: 13px;
+  color: #aeb6d8;
+}
+
 .item img {
   width: 120px;
   height: 120px;
@@ -333,4 +347,12 @@ h1 {
   }
 
   .list-header { flex-direction: column; align-items: center; }
+}
+
+@media (max-width: 600px) {
+  .status-box {
+    position: static;
+    margin-top: 10px;
+    justify-content: center;
+  }
 }
