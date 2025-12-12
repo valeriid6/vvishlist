@@ -330,6 +330,10 @@ function render() {
         <button class="delete-btn">Видалити</button>
       </div>
 
+      <div class="date-box">
+       ${formatFirestoreDate(item.createdAt)}
+      </div>
+
       <img src="${item.imageUrl}" alt="">
       <div class="item-info">
         <h3>${escapeHtml(item.name)}</h3>
