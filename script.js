@@ -337,9 +337,8 @@ function render() {
         ${item.description ? `<p>${escapeHtml(item.description)}</p>` : ""}
         <a href="${item.url}" target="_blank" rel="noopener noreferrer">Перейти до товару</a><br>
 
-        <div class="added-by">Додав(ла): ${escapeHtml(item.addedBy || "—")} | </div><div class="date-box">
-       ${formatFirestoreDate(item.createdAt)}
-      </div>
+        <div class="added-by">Додав(ла): ${escapeHtml(item.addedBy || "—")} | 
+        </div><div class="date-box"> Додано: ${formatFirestoreDate(item.createdAt)}</div>
 
         <div class="status-box">
 	<label>Статус: </label>
