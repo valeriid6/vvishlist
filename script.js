@@ -330,13 +330,13 @@ function render() {
         <div class="added-by">Додав(ла): ${escapeHtml(item.addedBy || "—")}</div>
 
         <div class="status-box">
-	<label>Статус: </label>
+	    <label>Статус: </label>
         <select class="status-select">
           <option ${item.status === "Хочу" ? "selected" : ""}>Хочу</option>
           <option ${item.status === "Куплено" ? "selected" : ""}>Куплено</option>
           <option ${item.status === "Передумав" ? "selected" : ""}>Передумав</option>
         </select>
-	</div>
+	    </div>
       </div>
     `;
 
@@ -442,3 +442,4 @@ async function editItem(item) {
 
 /* initial render */
 render();
+
