@@ -231,7 +231,7 @@ h1 {
 
 .date-box {
   position: absolute;
-  right: 26px;
+  right: 36px;
   top: 16px;
   font-size: 13px;
   color: #aeb6d8;
@@ -367,4 +367,5 @@ h1 {
     justify-content: center;
   }
 }
+
 
