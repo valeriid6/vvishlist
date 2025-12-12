@@ -10,10 +10,16 @@
 
   <h1>Спільний Wishlist</h1>
 
-  <!-- user name -->
-  <div class="user-box">
-    <span class="user-label">Ти:</span>
-    <input id="username" placeholder="Введи своє ім'я (щоб було видно хто додав)" autocomplete="nickname" />
+  <!-- Auth bar -->
+  <div class="auth-bar">
+    <div class="auth-left">
+      <span class="auth-label">Акаунт:</span>
+      <span id="authStatus" class="auth-status">не увійшов</span>
+    </div>
+    <div class="auth-right">
+      <button id="loginBtn" class="auth-btn">Увійти Google</button>
+      <button id="logoutBtn" class="auth-btn secondary" style="display:none;">Вийти</button>
+    </div>
   </div>
 
   <nav class="top-tabs">
@@ -52,7 +58,7 @@
 
       <button id="addBtn">Додати</button>
 
-      <p class="hint">Поля зі зірочкою (*) — обов’язкові.</p>
+      <p class="hint">Поля зі зірочкою (*) — обов’язкові. Щоб додавати — треба увійти через Google.</p>
     </div>
   </section>
 
@@ -63,10 +69,9 @@
       <div class="list-sub" id="itemsCount"></div>
     </div>
 
-    <!-- filters -->
     <div class="filters">
       <input id="searchInput" placeholder="Пошук по назві..." />
-      
+
       <select id="filterCategory">
         <option value="">Всі категорії</option>
         <option value="техніка">Техніка</option>
@@ -91,6 +96,7 @@
     <div id="list"></div>
   </section>
 
-  <script type="module "src="script.js"></script>
+  <!-- IMPORTANT: module without typos -->
+  <script type="module" src="script.js"></script>
 </body>
 </html>
