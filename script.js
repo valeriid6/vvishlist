@@ -99,7 +99,6 @@ function currencySymbol(code) {
 
 function formatFirestoreDate(ts) {
   if (!ts) return "—";
-  // Firestore Timestamp → JS Date
   const d = ts.toDate();
   return d.toLocaleDateString("uk-UA", {
     day: "2-digit",
