@@ -329,12 +329,14 @@ function render() {
 
         <div class="added-by">Додав(ла): ${escapeHtml(item.addedBy || "—")}</div>
 
-        <label>Статус: </label>
+        <div class="status-box">
+	<label>Статус: </label>
         <select class="status-select">
           <option ${item.status === "Хочу" ? "selected" : ""}>Хочу</option>
           <option ${item.status === "Куплено" ? "selected" : ""}>Куплено</option>
           <option ${item.status === "Передумав" ? "selected" : ""}>Передумав</option>
         </select>
+	</div>
       </div>
     `;
 
